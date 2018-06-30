@@ -85,7 +85,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
 
             # Summaries
             if iteration % 100 == 99:
-                _data = next(gen)
+                # _data = next(gen)
+                _data, _labels = data_handler.get_batch()
                 summary_str = session.run(
                     merged,
                     feed_dict={real_inputs_discrete: _data}
@@ -95,7 +96,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                 fake_samples, samples_real_probabilites, fake_scores = generate_argmax_samples_and_gt_samples(session, inv_charmap,
                                                                                                               fake_inputs,
                                                                                                               disc_fake,
-                                                                                                              gen,
+                                                                                                              data_handler,
                                                                                                               real_inputs_discrete,
                                                                                                               feed_gt=True)
 
@@ -105,7 +106,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                 test_samples, _, fake_scores = generate_argmax_samples_and_gt_samples(session, inv_charmap,
                                                                                       inference_op,
                                                                                       disc_on_inference,
-                                                                                      gen,
+                                                                                      data_handler,
                                                                                       real_inputs_discrete,
                                                                                       feed_gt=False)
                 # disc_on_inference, inference_op

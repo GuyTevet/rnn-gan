@@ -68,7 +68,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
             # Train critic
             for i in range(CRITIC_ITERS):
                 # _data = next(gen)
-                _data = data_handler.get_batch()
+                _data , _labels = data_handler.get_batch()
                 _disc_cost, _, real_scores = session.run(
                     [disc_cost, disc_train_op, disc_real],
                     feed_dict={real_inputs_discrete: _data}
@@ -77,7 +77,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
             # Train G
             for i in range(GEN_ITERS):
                 # _data = next(gen)
-                _data = data_handler.get_batch()
+                _data, _labels = data_handler.get_batch()
                 _ = session.run(gen_train_op, feed_dict={real_inputs_discrete: _data})
 
             print("iteration %s/%s"%(iteration, iterations))

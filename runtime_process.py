@@ -79,6 +79,10 @@ class Runtime_data_handler(object):
 
     def get_batch(self,create_mask=False):
 
+        if self.h5_curr_batch_pointer+self.batch_size >= self.h5_num_rows:
+            print("data ended. shuffling...")
+            self.h5_shuffle(self.h5_path)
+
         with h5py.File(self.h5_path, 'r') as h5:
             tags = np.array(h5['tags'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size])
             labels = np.squeeze(h5['labels'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size])
@@ -91,10 +95,9 @@ class Runtime_data_handler(object):
         # increment batch pointer
         self.h5_curr_batch_pointer += self.batch_size
 
-        if self.use_labels:
-            return tags, labels
-        else:
-            return tags
+
+        return tags, labels
+
 
     def process_tags(self,tags,create_mask=False):
 

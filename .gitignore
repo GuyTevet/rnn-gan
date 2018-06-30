@@ -107,6 +107,6 @@ venv.bak/
 data/
 
 #2to3
-*.bak
+*.py.bak
 
 logs

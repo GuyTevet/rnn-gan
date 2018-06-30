@@ -6,18 +6,18 @@ import tensorflow as tf
 flags = tf.app.flags
 
 
+os.path.join('.','output','sample.txt')
 
-
-flags.DEFINE_string('LOGS_DIR', './logs/', '')
-flags.DEFINE_string('DATA_DIR', './data/1-billion-word-language-modeling-benchmark-r13output/', "")
-flags.DEFINE_string('CKPT_PATH', "./ckpt/", "")
+flags.DEFINE_string('LOGS_DIR', os.path.join('.','logs'), '')
+flags.DEFINE_string('DATA_DIR', os.path.join('.','data','1-billion-word-language-modeling-benchmark-r13output'), "")
+flags.DEFINE_string('CKPT_PATH', os.path.join('.','ckpt'), "")
 flags.DEFINE_integer('BATCH_SIZE', 64, '')
 flags.DEFINE_integer('CRITIC_ITERS', 10, '')
 flags.DEFINE_integer('LAMBDA', 10, '')
 flags.DEFINE_integer('MAX_N_EXAMPLES', 10000000, '')
 flags.DEFINE_string('GENERATOR_MODEL', 'Generator_GRU_CL_VL_TH', '')
 flags.DEFINE_string('DISCRIMINATOR_MODEL', 'Discriminator_GRU', '')
-flags.DEFINE_string('PICKLE_PATH', './pkl', '')
+flags.DEFINE_string('PICKLE_PATH', os.path.join('.','pkl'), '')
 flags.DEFINE_integer('GEN_ITERS', 50, '')
 flags.DEFINE_integer('ITERATIONS_PER_SEQ_LENGTH', 15000, '')
 flags.DEFINE_float('NOISE_STDEV', 10.0, '')
@@ -38,7 +38,7 @@ flags.DEFINE_string('SCHEDULE_SPEC', 'all', '')
 
 # Only for inference mode
 
-flags.DEFINE_string('INPUT_SAMPLE', './output/sample.txt', '')
+flags.DEFINE_string('INPUT_SAMPLE', os.path.join('.','output','sample.txt'), '')
 
 
 FLAGS = flags.FLAGS

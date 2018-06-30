@@ -2,11 +2,20 @@ import model_and_data_serialization
 from config import *
 from single_length_train import run
 from summaries import log_run_settings
+from runtime_process import Runtime_data_handler
 
 create_logs_dir()
 log_run_settings()
 
-_, charmap, inv_charmap = model_and_data_serialization.load_dataset(seq_length=32, b_lines=False)
+# _, charmap, inv_charmap = model_and_data_serialization.load_dataset(seq_length=32, b_lines=False)
+
+# instance data handler
+data_handler = Runtime_data_handler(h5_path=FLAGS.H5_PATH,
+                                    json_path=FLAGS.JSON_PATH,
+                                    use_labels=False)
+charmap, inv_charmap = data_handler.tag_dict, data_handler.inv_tag
+
+
 
 REAL_BATCH_SIZE = FLAGS.BATCH_SIZE
 

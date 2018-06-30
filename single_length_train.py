@@ -12,6 +12,7 @@ sys.path.append(os.getcwd())
 
 from model import *
 import model_and_data_serialization
+from runtime_process import Runtime_data_handler
 
 
 # Download Google Billion Word at http://www.statmt.org/lm-benchmark/ and
@@ -47,14 +48,27 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
             restore_config.set_restore_dir(
                 load_from_curr_session=True)  # global param, always load from curr session after finishing the first seq
 
-        gen = inf_train_gen(lines, charmap)
+        # gen = inf_train_gen(lines, charmap)
+
+        # instance data handler
+        data_handler = Runtime_data_handler(h5_path=FLAGS.H5_PATH,
+                                            json_path=FLAGS.JSON_PATH,
+                                             seq_len=seq_length,
+                                             # max_len=self.seq_len,
+                                             # teacher_helping_mode='th_extended',
+                                             use_var_len=True,
+                                             batch_size=BATCH_SIZE,
+                                             use_labels=False)
+        data_handler.epoch_start(seq_len=seq_length)
+
 
         for iteration in range(iterations):
             start_time = time.time()
 
             # Train critic
             for i in range(CRITIC_ITERS):
-                _data = next(gen)
+                # _data = next(gen)
+                _data = data_handler.get_batch()
                 _disc_cost, _, real_scores = session.run(
                     [disc_cost, disc_train_op, disc_real],
                     feed_dict={real_inputs_discrete: _data}
@@ -62,7 +76,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
 
             # Train G
             for i in range(GEN_ITERS):
-                _data = next(gen)
+                # _data = next(gen)
+                _data = data_handler.get_batch()
                 _ = session.run(gen_train_op, feed_dict={real_inputs_discrete: _data})
 
             print("iteration %s/%s"%(iteration, iterations))
@@ -99,6 +114,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
 
             if iteration % FLAGS.SAVE_CHECKPOINTS_EVERY == FLAGS.SAVE_CHECKPOINTS_EVERY-1:
                 saver.save(session, model_and_data_serialization.get_internal_checkpoint_dir(seq_length) + "/ckp")
+
+        data_handler.epoch_end()
 
         saver.save(session, model_and_data_serialization.get_internal_checkpoint_dir(seq_length) + "/ckp")
         session.close()

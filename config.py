@@ -5,9 +5,6 @@ import tensorflow as tf
 
 flags = tf.app.flags
 
-
-os.path.join('.','output','sample.txt')
-
 flags.DEFINE_string('LOGS_DIR', os.path.join('.','logs'), '')
 flags.DEFINE_string('DATA_DIR', os.path.join('.','data','1-billion-word-language-modeling-benchmark-r13output'), "")
 flags.DEFINE_string('CKPT_PATH', os.path.join('.','ckpt'), "")
@@ -35,6 +32,8 @@ flags.DEFINE_boolean('SCHEDULE_ITERATIONS', False, '')
 flags.DEFINE_integer('SCHEDULE_MULT', 2000, '')
 flags.DEFINE_boolean('DYNAMIC_BATCH', False, '')
 flags.DEFINE_string('SCHEDULE_SPEC', 'all', '')
+flags.DEFINE_string('H5_PATH', os.path.join('.','h5', 'short_seq-64_char-based_classes-1.h5' ), '')
+flags.DEFINE_string('JSON_PATH', os.path.join('.','h5', 'short_seq-64_char-based_classes-1.json' ), '')
 
 # Only for inference mode
 

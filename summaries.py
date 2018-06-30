@@ -16,7 +16,7 @@ def define_summaries(disc_cost, gen_cost, seq_length):
 
 
 def log_samples(samples, scores, iteration, seq_length, prefix):
-    sample_scores = zip(samples, scores)
+    sample_scores = list(zip(samples, scores))
     sample_scores = sorted(sample_scores, key=lambda sample: sample[1])
 
 
@@ -32,7 +32,7 @@ def log_samples(samples, scores, iteration, seq_length, prefix):
 def log_run_settings():
     with open(os.path.join(LOGS_DIR, 'run_settings.txt'), 'w') as f:
         for key in tf.flags.FLAGS.__flags.keys():
-            entry = "%s: %s" % (key, tf.flags.FLAGS.__flags[key])
+            entry = "%s: %s" % (key, tf.flags.FLAGS.__flags[key]._value)
             f.write(entry + '\n')
             print(entry)
     f.close()
@@ -59,7 +59,7 @@ def get_grams(lines):
 
     for l in lines_joined:
         l = l.split(" ")
-        l = filter(lambda x: x != ' ' and x != '', l)
+        l = [x for x in l if x != ' ' and x != '']
 
         for i in range(len(l)):
             token_count += 1
@@ -93,4 +93,4 @@ def percentage_startswith(e_samples, unigrams_real):
                 counter += 1
                 break
     # print counter
-    return counter * 1.0 / len(e_samples.keys())
+    return counter * 1.0 / len(list(e_samples.keys()))

@@ -11,10 +11,10 @@ _, charmap, inv_charmap = model_and_data_serialization.load_dataset(seq_length=3
 REAL_BATCH_SIZE = FLAGS.BATCH_SIZE
 
 if FLAGS.SCHEDULE_SPEC == 'all' :
-    stages = range(FLAGS.START_SEQ, FLAGS.END_SEQ)
+    stages = list(range(FLAGS.START_SEQ, FLAGS.END_SEQ))
 else:
     split = FLAGS.SCHEDULE_SPEC.split(',')
-    stages = map(int, split)
+    stages = list(map(int, split))
 
 print('@@@@@@@@@@@ Stages : ' + ' '.join(map(str, stages)))
 

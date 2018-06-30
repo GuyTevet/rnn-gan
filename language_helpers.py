@@ -93,7 +93,7 @@ class NgramLanguageModel(object):
 
 def replace_trash(unicode_string):
     printable = set(string.printable)
-    return filter(lambda x: x in printable, unicode_string)
+    return [x for x in unicode_string if x in printable]
 
 
 def load_dataset(max_length, max_n_examples, tokenize=False, max_vocab_size=2048,
@@ -159,7 +159,7 @@ def load_dataset(max_length, max_n_examples, tokenize=False, max_vocab_size=2048
     # for i in range(100):
     #     print(filtered_lines[i])
 
-    print("loaded {} lines in dataset".format(len(lines)))
+    print(("loaded {} lines in dataset".format(len(lines))))
     return filtered_lines, charmap, inv_charmap
 
 

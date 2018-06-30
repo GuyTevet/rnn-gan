@@ -22,10 +22,10 @@ def evaluate(input_sample, gt_grams):
     u_samples, b_samples, t_samples, q_samples = get_grams(sample_lines)
     u_real, b_real, t_real, q_real = gt_grams
 
-    print "Unigrams: %f" % percentage_real(u_samples, u_real)
-    print "Bigrams: %f" % percentage_real(b_samples, b_real)
-    print "Trigrams: %f" % percentage_real(t_samples, t_real)
-    print "Quad grams: %f" % percentage_real(q_samples, q_real)
+    print("Unigrams: %f" % percentage_real(u_samples, u_real))
+    print("Bigrams: %f" % percentage_real(b_samples, b_real))
+    print("Trigrams: %f" % percentage_real(t_samples, t_real))
+    print("Quad grams: %f" % percentage_real(q_samples, q_real))
 
 
 def cut_end_words(lines):

@@ -43,4 +43,4 @@ with open(output_path, 'w') as f:
     for k in samples:
         f.write("%s\n"%k)
 f.close()
-print "Prediction saved to: %s"%output_path
+print("Prediction saved to: %s"%output_path)

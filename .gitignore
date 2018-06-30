@@ -105,3 +105,8 @@ venv.bak/
 
 .idea
 data/
+
+#2to3
+*.bak
+
+logs

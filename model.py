@@ -4,7 +4,7 @@ from tensorflow.contrib.rnn import GRUCell
 from config import *
 
 
-def Discriminator_GRU_baseline(inputs, charmap_len, seq_len, reuse=False):
+def Discriminator_GRU(inputs, charmap_len, seq_len, reuse=False):
     with tf.variable_scope("Discriminator", reuse=reuse):
         num_neurons = FLAGS.DISC_STATE_SIZE
 
@@ -42,7 +42,7 @@ def Discriminator_GRU_baseline(inputs, charmap_len, seq_len, reuse=False):
 
         return prediction
 
-def Discriminator_GRU(inputs, charmap_len, seq_len, reuse=False):
+def Discriminator_GRU_class_conditioned(inputs, charmap_len, seq_len, num_classes, reuse=False):
     with tf.variable_scope("Discriminator", reuse=reuse):
         num_neurons = FLAGS.DISC_STATE_SIZE
 
@@ -291,6 +291,7 @@ generators = {
 
 discriminators = {
     "Discriminator_GRU": Discriminator_GRU,
+    "Discriminator_GRU_class_conditioned": Discriminator_GRU_class_conditioned,
 }
 
 def get_noise():

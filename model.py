@@ -81,7 +81,7 @@ def Generator_GRU_CL_VL_TH(n_samples, charmap_len, seq_len=None, gt=None,gt_clas
 
         return train_pred, inference_op
 
-def Generator_GRU_class_conditioned(n_samples, charmap_len, seq_len=None, gt=None,gt_class=None):
+def Generator_GRU_class_conditioned(n_samples, charmap_len,num_classes, seq_len=None, gt=None,gt_class=None):
     with tf.variable_scope("Generator"):
         noise, noise_shape = get_noise()
         num_neurons = FLAGS.GEN_STATE_SIZE
@@ -100,7 +100,7 @@ def Generator_GRU_class_conditioned(n_samples, charmap_len, seq_len=None, gt=Non
         sm_bias = tf.Variable(tf.random_uniform([charmap_len], minval=-0.1, maxval=0.1))
 
         char_embedding = tf.Variable(tf.random_uniform([charmap_len, num_char_embed], minval=-0.1, maxval=0.1))
-        class_embedding = tf.Variable(tf.random_uniform([charmap_len, num_class_embed], minval=-0.1, maxval=0.1))
+        class_embedding = tf.Variable(tf.random_uniform([num_classes, num_class_embed], minval=-0.1, maxval=0.1))
 
         char_input = tf.Variable(tf.random_uniform([num_char_embed], minval=-0.1, maxval=0.1))
         char_input = tf.reshape(tf.tile(char_input, [n_samples]), [n_samples, 1, num_char_embed])

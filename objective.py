@@ -49,11 +49,11 @@ def define_objective(charmap, real_inputs_discrete, seq_length):
     return disc_cost, gen_cost, train_pred, disc_fake, disc_real, disc_on_inference, inference_op
 
 
-def define_class_objective(charmap, real_inputs_discrete, real_class_discrete, seq_length):
+def define_class_objective(charmap, real_inputs_discrete, real_class_discrete, seq_length, num_classes):
     real_inputs = tf.one_hot(real_inputs_discrete, len(charmap))
     Generator = get_generator(FLAGS.GENERATOR_MODEL)
     Discriminator = get_discriminator(FLAGS.DISCRIMINATOR_MODEL)
-    train_pred, inference_op = Generator(BATCH_SIZE, len(charmap), seq_len=seq_length, gt=real_inputs, gt_class=real_class_discrete)
+    train_pred, inference_op = Generator(BATCH_SIZE, len(charmap), seq_len=seq_length, num_classes=num_classes, gt=real_inputs, gt_class=real_class_discrete)
 
     real_inputs_substrings = get_substrings_from_gt(real_inputs, seq_length, len(charmap))
 
@@ -64,7 +64,6 @@ def define_class_objective(charmap, real_inputs_discrete, real_class_discrete, s
 
     disc_cost, gen_cost = loss_d_g(disc_fake, disc_real, train_pred, real_inputs_substrings, charmap, seq_length, Discriminator)
     return disc_cost, gen_cost, train_pred, disc_fake, disc_real, disc_on_inference, inference_op
-
 
 
 def loss_d_g(disc_fake, disc_real, fake_inputs, real_inputs, charmap, seq_length, Discriminator):

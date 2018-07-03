@@ -7,9 +7,6 @@ import time
 import random
 import json
 
-#local
-import data
-
 """
 Runtime_data_handler
 """

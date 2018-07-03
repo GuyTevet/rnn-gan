@@ -27,7 +27,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
 
     # instance data handler
     data_handler = Runtime_data_handler(h5_path=FLAGS.H5_PATH,
-                                        json_path=FLAGS.JSON_PATH,
+                                        json_path=FLAGS.H5_PATH.replace('.h5','.json'),
                                         seq_len=seq_length,
                                         # max_len=self.seq_len,
                                         # teacher_helping_mode='th_extended',
@@ -97,7 +97,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
             print("disc cost %f"%_disc_cost)
 
             # Summaries
-            if iteration % 100 == 99:
+            if iteration % 1000 == 999:
+            # if iteration % 5 == 4:
                 # _data = next(gen)
                 _data, _labels = data_handler.get_batch()
                 summary_str = session.run(

@@ -404,7 +404,7 @@ class H5_data_handler(Data_handler):
         cur_tag = len(tag_dict.keys())
 
         for char, count in counts.most_common(50000):
-            if char not in tag_dict and count > 5:
+            if char not in tag_dict and count > 100:
                 tag_dict[char] = cur_tag
                 cur_tag += 1
 
@@ -626,13 +626,13 @@ if __name__ == '__main__':
                         '/Volumes/###/news/1-billion-word-language-modeling/news.2009.de.shuffled',
                         '/Volumes/###/news/1-billion-word-language-modeling/news.2010.de.shuffled',
                         '/Volumes/###/news/1-billion-word-language-modeling/news.2011.de.shuffled'],
-                       # 'cs_news':
-                       #      [
-                       #      '/Volumes/###/news/1-billion-word-language-modeling/news.2007.cs.shuffled',
-                       #      '/Volumes/###/news/1-billion-word-language-modeling/news.2008.cs.shuffled',
-                       #      '/Volumes/###/news/1-billion-word-language-modeling/news.2009.cs.shuffled',
-                       #      '/Volumes/###/news/1-billion-word-language-modeling/news.2010.cs.shuffled',
-                       #      '/Volumes/###/news/1-billion-word-language-modeling/news.2011.cs.shuffled'],
+                       'cs_news':
+                            [
+                            '/Volumes/###/news/1-billion-word-language-modeling/news.2007.cs.shuffled',
+                            '/Volumes/###/news/1-billion-word-language-modeling/news.2008.cs.shuffled',
+                            '/Volumes/###/news/1-billion-word-language-modeling/news.2009.cs.shuffled',
+                            '/Volumes/###/news/1-billion-word-language-modeling/news.2010.cs.shuffled',
+                            '/Volumes/###/news/1-billion-word-language-modeling/news.2011.cs.shuffled'],
                        'fr_news':
                            [
                             '/Volumes/###/news/1-billion-word-language-modeling/news.2007.fr.shuffled',
@@ -671,7 +671,7 @@ if __name__ == '__main__':
 
     H5 = H5_data_handler(name=FLAGS.mode,label2files_dict=label2files,
                          output_dir=out_dir,
-                         seq_len=64,
+                         seq_len=32,
                          base_element=FLAGS.base_element,
                          debug_mode=False)
     H5.prepare_data()

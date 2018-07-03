@@ -10,8 +10,9 @@ log_run_settings()
 # _, charmap, inv_charmap = model_and_data_serialization.load_dataset(seq_length=32, b_lines=False)
 
 # instance data handler
-data_handler = Runtime_data_handler(h5_path=FLAGS.H5_PATH,
-                                    json_path=FLAGS.JSON_PATH,
+data_handler = Runtime_data_handler(seq_len=1,
+                                    h5_path=FLAGS.H5_PATH,
+                                    json_path=FLAGS.H5_PATH.replace('.h5','.json'),
                                     use_labels=False)
 charmap, inv_charmap = data_handler.tag_dict, data_handler.inv_tag
 

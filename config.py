@@ -34,8 +34,7 @@ flags.DEFINE_boolean('SCHEDULE_ITERATIONS', False, '')
 flags.DEFINE_integer('SCHEDULE_MULT', 2000, '')
 flags.DEFINE_boolean('DYNAMIC_BATCH', False, '')
 flags.DEFINE_string('SCHEDULE_SPEC', 'all', '')
-flags.DEFINE_string('H5_PATH', os.path.join('.','h5', 'short_seq-64_char-based_classes-1.h5' ), '')
-flags.DEFINE_string('JSON_PATH', os.path.join('.','h5', 'short_seq-64_char-based_classes-1.json' ), '')
+flags.DEFINE_string('H5_PATH', os.path.join('.','h5', 'news_seq-32_char-based_classes-5.h5' ), '')
 
 # Only for inference mode
 

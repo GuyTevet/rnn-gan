@@ -43,7 +43,7 @@ def Discriminator_GRU(inputs, charmap_len, seq_len, reuse=False):
         return prediction
 
 
-def Generator_GRU_CL_VL_TH(n_samples, charmap_len, seq_len=None, gt=None):
+def Generator_GRU_CL_VL_TH(n_samples, charmap_len, seq_len=None, gt=None,gt_class=None):
     with tf.variable_scope("Generator"):
         noise, noise_shape = get_noise()
         num_neurons = FLAGS.GEN_STATE_SIZE
@@ -102,25 +102,25 @@ def Generator_GRU_class_conditioned(n_samples, charmap_len, seq_len=None, gt=Non
         char_embedding = tf.Variable(tf.random_uniform([charmap_len, num_char_embed], minval=-0.1, maxval=0.1))
         class_embedding = tf.Variable(tf.random_uniform([charmap_len, num_class_embed], minval=-0.1, maxval=0.1))
 
-        char_input = tf.Variable(tf.random_uniform([num_neurons], minval=-0.1, maxval=0.1))
-        char_input = tf.reshape(tf.tile(char_input, [n_samples]), [n_samples, 1, num_neurons])
+        char_input = tf.Variable(tf.random_uniform([num_char_embed], minval=-0.1, maxval=0.1))
+        char_input = tf.reshape(tf.tile(char_input, [n_samples]), [n_samples, 1, num_char_embed])
 
         if seq_len is None:
             seq_len = tf.placeholder(tf.int32, None, name="ground_truth_sequence_length")
 
         if gt is not None: #if no GT, we are training
-            train_pred = get_class_train_op(cells, char_input, charmap_len, char_embedding,class_embedding, gt,gt_class, n_samples, num_neurons, seq_len,
-                                      sm_bias, sm_weight, train_initial_states)
-            # inference_op = get_class_inference_op(cells, char_input, char_embedding,class_embedding, seq_len, sm_bias, sm_weight, inference_initial_states,
-            #                                 num_neurons,
-            #                                 charmap_len, reuse=True)
+            train_pred = get_class_train_op(cells, char_input, charmap_len, char_embedding,class_embedding, gt,gt_class, n_samples, num_neurons, num_char_embed,
+                                            seq_len, sm_bias, sm_weight, train_initial_states)
+            inference_op = get_class_inference_op(cells, char_input, char_embedding, class_embedding, gt_class, seq_len, sm_bias, sm_weight, inference_initial_states,
+                                            num_neurons,
+                                            charmap_len, reuse=True)
         else:
-            # inference_op = get_inference_op(cells, char_input, embedding, seq_len, sm_bias, sm_weight, inference_initial_states,
-            #                                 num_neurons,
-            #                                 charmap_len, reuse=False)
+            inference_op = get_class_inference_op(cells, char_input, char_embedding, class_embedding, gt_class, seq_len, sm_bias, sm_weight, inference_initial_states,
+                                            num_neurons,
+                                            charmap_len, reuse=False)
             train_pred = None
 
-        return train_pred #, inference_op
+        return train_pred , inference_op
 
 
 def create_initial_states(noise):
@@ -137,8 +137,7 @@ def get_train_op(cells, char_input, charmap_len, embedding, gt, n_samples, num_n
     gt_GRU_input = tf.reshape(gt_GRU_input, [n_samples, seq_len, num_neurons])[:, :-1]
     gt_sentence_input = tf.concat([char_input, gt_GRU_input], axis=1)
     GRU_output, _ = rnn_step_prediction(cells, charmap_len, gt_sentence_input, num_neurons, seq_len, sm_bias,
-                                         sm_weight,
-                                         states)
+                                         sm_weight,states)
     train_pred = []
     # TODO: optimize loop
     for i in range(seq_len):
@@ -213,6 +212,31 @@ def get_inference_op(cells, char_input, embedding, seq_len, sm_bias, sm_weight, 
         best_char = best_chars_one_hot_tensor[:, -1, :]
         inference_pred.append(tf.expand_dims(best_char, 1))
         embedded_pred.append(tf.expand_dims(tf.matmul(best_char, embedding), 1))
+        reuse = True  # no matter what the reuse was, after the first step we have to reuse the defined vars
+
+    return tf.concat(inference_pred, axis=1)
+
+def get_class_inference_op(cells, char_input, char_embedding,class_embedding, gt_class , seq_len, sm_bias, sm_weight, states, num_neurons, charmap_len,
+                     reuse=False):
+
+    # class embeddings
+    gt_class_embedding = tf.expand_dims(tf.nn.embedding_lookup(class_embedding, gt_class),axis=1)
+
+    # add classes to char input
+    char_input = tf.concat([char_input, gt_class_embedding], axis=2)
+
+    # init
+    inference_pred = []
+    embedded_pred = [char_input]
+    for i in range(seq_len):
+        step_pred, states = rnn_step_prediction(cells, charmap_len, tf.concat(embedded_pred, 1), num_neurons, seq_len,
+                                                sm_bias, sm_weight, states, reuse=reuse)
+        best_chars_tensor = tf.argmax(step_pred, axis=2)
+        best_chars_one_hot_tensor = tf.one_hot(best_chars_tensor, charmap_len)
+        best_char = best_chars_one_hot_tensor[:, -1, :]
+        inference_pred.append(tf.expand_dims(best_char, 1))
+        cur_char_embed = tf.expand_dims(tf.matmul(best_char, char_embedding), 1)
+        embedded_pred.append(tf.concat([cur_char_embed, gt_class_embedding], axis=2))
         reuse = True  # no matter what the reuse was, after the first step we have to reuse the defined vars
 
     return tf.concat(inference_pred, axis=1)

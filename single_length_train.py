@@ -4,7 +4,7 @@ from tensorflow.python.training.saver import latest_checkpoint
 
 from config import *
 from language_helpers import generate_argmax_samples_and_gt_samples, inf_train_gen, decode_indices_to_string
-from objective import get_optimization_ops, define_objective
+from objective import get_optimization_ops, define_objective, define_class_objective
 from summaries import define_summaries, \
     log_samples
 
@@ -22,15 +22,35 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
     if len(DATA_DIR) == 0:
         raise Exception('Please specify path to data directory in single_length_train.py!')
 
-    lines, _, _ = model_and_data_serialization.load_dataset(seq_length=seq_length, b_charmap=False, b_inv_charmap=False,
-                                                            n_examples=FLAGS.MAX_N_EXAMPLES)
+    # lines, _, _ = model_and_data_serialization.load_dataset(seq_length=seq_length, b_charmap=False, b_inv_charmap=False,
+    #                                                         n_examples=FLAGS.MAX_N_EXAMPLES)
 
+    # instance data handler
+    data_handler = Runtime_data_handler(h5_path=FLAGS.H5_PATH,
+                                        json_path=FLAGS.JSON_PATH,
+                                        seq_len=seq_length,
+                                        # max_len=self.seq_len,
+                                        # teacher_helping_mode='th_extended',
+                                        use_var_len=False,
+                                        batch_size=BATCH_SIZE,
+                                        use_labels=False)
+
+    #define placeholders
     real_inputs_discrete = tf.placeholder(tf.int32, shape=[BATCH_SIZE, seq_length])
-
+    real_classes_discrete = tf.placeholder(tf.int32, shape=[BATCH_SIZE])
     global_step = tf.Variable(0, trainable=False)
-    disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_objective(charmap,
-                                                                                                            real_inputs_discrete,
-                                                                                                            seq_length)
+
+    # build graph according to arch
+    if FLAGS.ARCH == 'default':
+        disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_objective(charmap,
+                                                                                                                real_inputs_discrete,
+                                                                                                                seq_length)
+    elif FLAGS.ARCH == 'class_conditioned':
+        disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_class_objective(charmap,
+                                                                                                                real_inputs_discrete,
+                                                                                                                real_classes_discrete,
+                                                                                                                seq_length)
+
     merged, train_writer = define_summaries(disc_cost, gen_cost, seq_length)
     disc_train_op, gen_train_op = get_optimization_ops(disc_cost, gen_cost, global_step)
 
@@ -49,16 +69,6 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                 load_from_curr_session=True)  # global param, always load from curr session after finishing the first seq
 
         # gen = inf_train_gen(lines, charmap)
-
-        # instance data handler
-        data_handler = Runtime_data_handler(h5_path=FLAGS.H5_PATH,
-                                            json_path=FLAGS.JSON_PATH,
-                                             seq_len=seq_length,
-                                             # max_len=self.seq_len,
-                                             # teacher_helping_mode='th_extended',
-                                             use_var_len=True,
-                                             batch_size=BATCH_SIZE,
-                                             use_labels=False)
         data_handler.epoch_start(seq_len=seq_length)
 
 
@@ -71,14 +81,14 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                 _data , _labels = data_handler.get_batch()
                 _disc_cost, _, real_scores = session.run(
                     [disc_cost, disc_train_op, disc_real],
-                    feed_dict={real_inputs_discrete: _data}
+                    feed_dict={real_inputs_discrete: _data, real_classes_discrete: _labels}
                 )
 
             # Train G
             for i in range(GEN_ITERS):
                 # _data = next(gen)
                 _data, _labels = data_handler.get_batch()
-                _ = session.run(gen_train_op, feed_dict={real_inputs_discrete: _data})
+                _ = session.run(gen_train_op, feed_dict={real_inputs_discrete: _data, real_classes_discrete: _labels})
 
             print("iteration %s/%s"%(iteration, iterations))
             print("disc cost %f"%_disc_cost)

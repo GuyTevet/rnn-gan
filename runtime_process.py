@@ -84,13 +84,13 @@ class Runtime_data_handler(object):
             self.h5_shuffle(self.h5_path)
 
         with h5py.File(self.h5_path, 'r') as h5:
-            tags = np.array(h5['tags'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size])
+            tags = np.array(h5['tags'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size,:self.output_seq_len])
             labels = np.squeeze(h5['labels'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size])
 
         # print("batch [%0d : %0d]"%(self.h5_curr_batch_pointer,self.h5_curr_batch_pointer+self.batch_size)) # for debug
 
-        # process
-        tags = self.process_tags(tags,create_mask=create_mask)
+        # # process
+        # tags = self.process_tags(tags,create_mask=create_mask)
 
         # increment batch pointer
         self.h5_curr_batch_pointer += self.batch_size
@@ -99,21 +99,23 @@ class Runtime_data_handler(object):
         return tags, labels
 
 
-    def process_tags(self,tags,create_mask=False):
-
-        feed_tags = self.tag_dict['END_TAG'] * np.ones(shape=[tags.shape[0],self.output_seq_len],dtype=np.uint8) #copy(tags)[:,:self.output_seq_len]
-
-        # cut sample in var lens
-        len_list = []
-        for sample_i in range(feed_tags.shape[0]):
-            if self.use_var_len == True:
-                len = random.randrange(1, self.output_seq_len + 1)
-            else:
-                len = self.output_seq_len
-            feed_tags[sample_i,:len] = tags[sample_i,:len]
-            len_list.append(len)
-
-        return feed_tags
+    # def process_tags(self,tags,create_mask=False):
+    #
+    #     feed_tags = self.tag_dict['END_TAG'] * np.ones(shape=[tags.shape[0],self.output_seq_len],dtype=np.uint8) #copy(tags)[:,:self.output_seq_len]
+    #
+    #     # cut sample in var lens
+    #     len_list = []
+    #     for sample_i in range(feed_tags.shape[0]):
+    #         if self.use_var_len == True:
+    #             len = random.randrange(1, self.output_seq_len + 1)
+    #         else:
+    #             len = self.output_seq_len
+    #         feed_tags[sample_i,:len] = tags[sample_i,:len]
+    #         len_list.append(len)
+    #
+    #
+    #
+    #     return feed_tags
 
         # #create mask if needed
         # mask = np.zeros(shape=[tags.shape[0],self.output_seq_len],dtype=np.bool)

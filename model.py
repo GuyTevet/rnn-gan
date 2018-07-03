@@ -4,7 +4,7 @@ from tensorflow.contrib.rnn import GRUCell
 from config import *
 
 
-def Discriminator_GRU(inputs, charmap_len, seq_len, reuse=False):
+def Discriminator_GRU_baseline(inputs, charmap_len, seq_len, reuse=False):
     with tf.variable_scope("Discriminator", reuse=reuse):
         num_neurons = FLAGS.DISC_STATE_SIZE
 
@@ -42,6 +42,49 @@ def Discriminator_GRU(inputs, charmap_len, seq_len, reuse=False):
 
         return prediction
 
+def Discriminator_GRU(inputs, charmap_len, seq_len, reuse=False):
+    with tf.variable_scope("Discriminator", reuse=reuse):
+        num_neurons = FLAGS.DISC_STATE_SIZE
+
+        weight = tf.get_variable("embedding", shape=[charmap_len, num_neurons],
+                                 initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
+
+        # backwards compatability
+        if FLAGS.DISC_GRU_LAYERS == 1:
+            cell = GRUCell(num_neurons)
+        else:
+            cell = tf.contrib.rnn.MultiRNNCell([GRUCell(num_neurons) for _ in range(FLAGS.DISC_GRU_LAYERS)], state_is_tuple=True)
+
+        flat_inputs = tf.reshape(inputs, [-1, charmap_len])
+
+        inputs = tf.reshape(tf.matmul(flat_inputs, weight), [-1, seq_len, num_neurons])
+        inputs = tf.unstack(tf.transpose(inputs, [1,0,2]))
+
+
+        for inp in inputs:
+            print(inp.get_shape())
+
+        output, state = tf.contrib.rnn.static_rnn(
+            cell,
+            inputs,
+            dtype=tf.float32
+        )
+
+        last = output[-1]
+
+        # FC of first discriminator prediction - real/fake
+        weight_real_fake = tf.get_variable("W", shape=[num_neurons, 1],
+                                 initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
+        bias_real_fake = tf.get_variable("b", shape=[1], initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
+        prediction_real_fake = tf.matmul(last, weight_real_fake) + bias_real_fake
+
+        # FC of second discriminator prediction - class
+        weight_class = tf.get_variable("W_class", shape=[num_neurons, num_classes],
+                                       initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
+        bias_class = tf.get_variable("b_class", shape=[1, num_classes], initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
+        prediction_class = tf.matmul(last, weight_class) + bias_class
+
+        return prediction_real_fake, prediction_class
 
 def Generator_GRU_CL_VL_TH(n_samples, charmap_len, seq_len=None, gt=None):
     with tf.variable_scope("Generator"):

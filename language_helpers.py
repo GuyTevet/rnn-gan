@@ -1,5 +1,6 @@
 import collections
 import string
+import codecs
 
 import numpy as np
 
@@ -111,7 +112,7 @@ def load_dataset(max_length, max_n_examples, tokenize=False, max_vocab_size=2048
                                                                                           '' if dataset == 'training' else '.heldout',
                                                                                           str(i + 1).zfill(5),
                                                                                           str(number_of_divided_files).zfill(5)))
-        with open(path, 'r') as f:
+        with codecs.open(path, 'r', 'utf-8') as f:
             for line in f:
                 line = line[:max_length]
 

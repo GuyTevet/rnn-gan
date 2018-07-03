@@ -22,7 +22,7 @@ def log_samples(samples, scores, iteration, seq_length, prefix):
 
     with open(model_and_data_serialization.get_internal_checkpoint_dir(seq_length) + '/{}_samples_{}.txt'.format(
             prefix, iteration),
-              'a') as f:
+              'a',encoding='utf8') as f:
         for s, score in sample_scores:
             s = "".join(s)
             f.write("%s||\t%f\n" % (s, score))

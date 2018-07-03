@@ -47,7 +47,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                                                                                                                 seq_length)
         visualize_text = generate_argmax_samples_and_gt_samples
     elif FLAGS.ARCH == 'class_conditioned':
-        disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_class_objective(charmap,
+        disc_cost, gen_cost, fake_inputs, disc_fake, disc_fake_class, disc_real, disc_real_class, disc_on_inference, inference_op = define_class_objective(charmap,
                                                                                                                 real_inputs_discrete,
                                                                                                                 real_classes_discrete,
                                                                                                                 seq_length,

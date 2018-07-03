@@ -82,6 +82,7 @@ class Runtime_data_handler(object):
         if self.h5_curr_batch_pointer+self.batch_size >= self.h5_num_rows:
             print("data ended. shuffling...")
             self.h5_shuffle(self.h5_path)
+            self.h5_curr_batch_pointer = 0
 
         with h5py.File(self.h5_path, 'r') as h5:
             tags = np.array(h5['tags'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size,:self.output_seq_len])

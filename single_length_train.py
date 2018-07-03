@@ -3,7 +3,7 @@ import sys
 from tensorflow.python.training.saver import latest_checkpoint
 
 from config import *
-from language_helpers import generate_argmax_samples_and_gt_samples, inf_train_gen, decode_indices_to_string
+from language_helpers import generate_argmax_samples_and_gt_samples,generate_argmax_samples_and_gt_samples_class, inf_train_gen, decode_indices_to_string
 from objective import get_optimization_ops, define_objective, define_class_objective
 from summaries import define_summaries, \
     log_samples
@@ -45,12 +45,14 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
         disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_objective(charmap,
                                                                                                                 real_inputs_discrete,
                                                                                                                 seq_length)
+        visualize_text = generate_argmax_samples_and_gt_samples
     elif FLAGS.ARCH == 'class_conditioned':
         disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_class_objective(charmap,
                                                                                                                 real_inputs_discrete,
                                                                                                                 real_classes_discrete,
                                                                                                                 seq_length,
                                                                                                                 num_classes=len(data_handler.class_dict))
+        visualize_text = generate_argmax_samples_and_gt_samples_class
 
     merged, train_writer = define_summaries(disc_cost, gen_cost, seq_length)
     disc_train_op, gen_train_op = get_optimization_ops(disc_cost, gen_cost, global_step)
@@ -100,28 +102,36 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                 _data, _labels = data_handler.get_batch()
                 summary_str = session.run(
                     merged,
-                    feed_dict={real_inputs_discrete: _data}
+                    feed_dict={real_inputs_discrete: _data, real_classes_discrete: _labels}
                 )
 
                 train_writer.add_summary(summary_str, global_step=iteration)
-                fake_samples, samples_real_probabilites, fake_scores = generate_argmax_samples_and_gt_samples(session, inv_charmap,
-                                                                                                              fake_inputs,
-                                                                                                              disc_fake,
-                                                                                                              data_handler,
-                                                                                                              real_inputs_discrete,
-                                                                                                              feed_gt=True)
+
+                fake_samples, samples_real_probabilites, fake_scores = visualize_text(session, inv_charmap,
+                                                                                      fake_inputs,
+                                                                                      disc_fake,
+                                                                                      data_handler,
+                                                                                      real_inputs_discrete,
+                                                                                      real_classes_discrete,
+                                                                                      feed_gt=True,
+                                                                                      iteration=iteration,
+                                                                                      seq_length=seq_length)
 
                 log_samples(fake_samples, fake_scores, iteration, seq_length, "train")
                 log_samples(decode_indices_to_string(_data, inv_charmap), real_scores, iteration, seq_length,
                              "gt")
-                test_samples, _, fake_scores = generate_argmax_samples_and_gt_samples(session, inv_charmap,
-                                                                                      inference_op,
-                                                                                      disc_on_inference,
-                                                                                      data_handler,
-                                                                                      real_inputs_discrete,
-                                                                                      feed_gt=False)
+                test_samples, _, fake_scores = visualize_text(session, inv_charmap,
+                                                              inference_op,
+                                                              disc_on_inference,
+                                                              data_handler,
+                                                              real_inputs_discrete,
+                                                              real_classes_discrete,
+                                                              feed_gt=False,
+                                                              iteration=iteration,
+                                                              seq_length=seq_length)
                 # disc_on_inference, inference_op
-                log_samples(test_samples, fake_scores, iteration, seq_length, "test")
+                if not FLAGS.ARCH == 'class_conditioned':
+                    log_samples(test_samples, fake_scores, iteration, seq_length, "test")
 
 
             if iteration % FLAGS.SAVE_CHECKPOINTS_EVERY == FLAGS.SAVE_CHECKPOINTS_EVERY-1:

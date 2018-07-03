@@ -4,6 +4,7 @@ import string
 import numpy as np
 
 from config import BATCH_SIZE
+from summaries import log_samples
 
 
 def tokenize_string(sample):
@@ -163,32 +164,67 @@ def load_dataset(max_length, max_n_examples, tokenize=False, max_vocab_size=2048
     return filtered_lines, charmap, inv_charmap
 
 
-def generate_argmax_samples_and_gt_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, feed_gt=True):
+def generate_argmax_samples_and_gt_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, real_classes_discrete,
+                                           feed_gt=True,iteration=None,seq_length=None):
     scores = []
     samples = []
     samples_probabilites = []
     for i in range(10):
         argmax_samples, real_samples, samples_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
-                                                                        gen, real_inputs_discrete, feed_gt=feed_gt)
+                                                                        gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt)
         samples.extend(argmax_samples)
         scores.extend(samples_scores)
         samples_probabilites.extend(real_samples)
     return samples, samples_probabilites, scores
 
+def generate_argmax_samples_and_gt_samples_class(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, real_classes_discrete,
+                                                 feed_gt=True,iteration=None,seq_length=None):
+    scores = []
+    samples = []
+    samples_probabilites = []
+    if feed_gt: #train
+        for i in range(10):
+            argmax_samples, real_samples, samples_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
+                                                                            gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt)
+            samples.extend(argmax_samples)
+            scores.extend(samples_scores)
+            samples_probabilites.extend(real_samples)
+    else: #infrance per label
+        for _label in gen.class_dict.keys():
+            for i in range(10):
+                argmax_samples, real_samples, samples_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
+                                                                                gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt, single_label=_label)
+                samples.extend(argmax_samples)
+                scores.extend(samples_scores)
+                samples_probabilites.extend(real_samples)
 
-def generate_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, feed_gt=True):
+            #write label visualization
+            log_samples(samples, scores, iteration, seq_length, "test_" + gen.class_dict[_label])
+            scores = []
+            samples = []
+            samples_probabilites = []
+
+    return samples, samples_probabilites, scores
+
+
+def generate_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, real_classes_discrete,
+                     feed_gt=True, single_label=None):
     # sampled data here is only to calculate loss
     if feed_gt:
-        f_dict = {real_inputs_discrete: gen.get_batch()}
+        _data, _labels = gen.get_batch()
+        f_dict = {real_inputs_discrete: _data, real_classes_discrete: _labels}
     else:
-        f_dict = {}
+        if single_label is None:
+            f_dict = {}
+        else:
+            f_dict = {real_classes_discrete: single_label * np.ones([BATCH_SIZE],dtype=np.int32)} #inference for ingle label
 
     fake_samples, fake_scores = session.run([fake_inputs, disc_fake], feed_dict=f_dict)
     fake_scores = np.squeeze(fake_scores)
 
     decoded_samples = decode_indices_to_string(np.argmax(fake_samples, axis=2), inv_charmap)
-    return decoded_samples, fake_samples, fake_scores
 
+    return decoded_samples, fake_samples, fake_scores
 
 def decode_indices_to_string(samples, inv_charmap):
     decoded_samples = []

@@ -39,6 +39,7 @@ class Runtime_data_handler(object):
     def load_tag_dict_from_json(self):
         with open(self.json_path, 'r',encoding='utf8') as f:
             class_dict = json.loads(f.readline().replace('\n',''))
+            class_dict = {int(key): class_dict[key] for key in class_dict.keys()}
             tag_dict = json.loads(f.readline().replace('\n',''))
             tag_dict = {key: int(tag_dict[key]) for key in tag_dict.keys()}
             # inv_tag_dict = {tag_dict[key]: key for key in tag_dict.keys()}
@@ -70,9 +71,11 @@ class Runtime_data_handler(object):
     def epoch_start(self,start_batch_id = 0,seq_len=64):
         self.output_seq_len = seq_len
         self.h5_curr_batch_pointer = start_batch_id * self.batch_size
+        self.h5_shuffle(self.h5_path)
 
     def epoch_end(self):
-        self.h5_shuffle(self.h5_path)
+        # self.h5_shuffle(self.h5_path)
+        pass
 
     def get_num_batches_per_epoch(self):
         return self.num_batches_per_epoch

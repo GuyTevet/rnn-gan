@@ -24,7 +24,7 @@ class Runtime_data_handler(object):
         self.use_labels = use_labels
         self.output_seq_len = seq_len                       # fixed length of the tags data stracture
         self.use_var_len = use_var_len                      # use variable length for sentance in [1,seq_len] uniformply
-        self.tag_dict, self.inv_tag = self.load_tag_dict_from_json()
+        self.class_dict, self.tag_dict, self.inv_tag = self.load_tag_dict_from_json()
 
         with h5py.File(self.h5_path, 'r') as h5:
             self.h5_num_rows = h5['tags'].shape[0]
@@ -38,7 +38,7 @@ class Runtime_data_handler(object):
 
     def load_tag_dict_from_json(self):
         with open(self.json_path, 'r',encoding='utf8') as f:
-            num2label = json.loads(f.readline().replace('\n',''))
+            class_dict = json.loads(f.readline().replace('\n',''))
             tag_dict = json.loads(f.readline().replace('\n',''))
             tag_dict = {key: int(tag_dict[key]) for key in tag_dict.keys()}
             # inv_tag_dict = {tag_dict[key]: key for key in tag_dict.keys()}
@@ -47,7 +47,7 @@ class Runtime_data_handler(object):
             for key in tag_dict.keys():
                 inv_tag[int(tag_dict[key])] = key
 
-        return tag_dict , inv_tag
+        return class_dict, tag_dict , inv_tag
 
     def h5_shuffle(self,h5_path):
 

@@ -49,7 +49,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
         disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_class_objective(charmap,
                                                                                                                 real_inputs_discrete,
                                                                                                                 real_classes_discrete,
-                                                                                                                seq_length)
+                                                                                                                seq_length,
+                                                                                                                num_classes=len(data_handler.class_dict))
 
     merged, train_writer = define_summaries(disc_cost, gen_cost, seq_length)
     disc_train_op, gen_train_op = get_optimization_ops(disc_cost, gen_cost, global_step)

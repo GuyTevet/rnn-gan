@@ -180,7 +180,7 @@ def generate_argmax_samples_and_gt_samples(session, inv_charmap, fake_inputs, di
 def generate_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, feed_gt=True):
     # sampled data here is only to calculate loss
     if feed_gt:
-        f_dict = {real_inputs_discrete: next(gen)}
+        f_dict = {real_inputs_discrete: gen.get_batch()}
     else:
         f_dict = {}
 

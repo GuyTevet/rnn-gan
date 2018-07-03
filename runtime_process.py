@@ -16,17 +16,15 @@ Runtime_data_handler
 
 class Runtime_data_handler(object):
 
-    def __init__(self,h5_path,json_path,batch_size=64,seq_len=64,max_len=64,teacher_helping_mode='th_extended',use_labels=True,use_var_len=True):
+    def __init__(self,h5_path,json_path,batch_size=64,seq_len=64,teacher_helping_mode='th_extended',use_labels=True,use_var_len=True):
 
         self.h5_path = h5_path
         self.json_path = json_path
         self.batch_size = batch_size
         self.use_labels = use_labels
         self.output_seq_len = seq_len                       # fixed length of the tags data stracture
-        self.output_max_len = max_len                       # max length of the sentences
-        self.teacher_helping_mode = teacher_helping_mode    # supporting {th_extended,th_legacy,full}
-        self.use_var_len = use_var_len                      # use variable length for sentance in [1,max_len] uniformply
-        self.tag_dict = self.load_dict_from_json()
+        self.use_var_len = use_var_len                      # use variable length for sentance in [1,seq_len] uniformply
+        self.tag_dict, self.inv_tag = self.load_tag_dict_from_json()
 
         with h5py.File(self.h5_path, 'r') as h5:
             self.h5_num_rows = h5['tags'].shape[0]
@@ -36,16 +34,20 @@ class Runtime_data_handler(object):
 
         self.num_batches_per_epoch = self.h5_num_rows // self.batch_size # skipping the last, non-complete, batch
 
-        self.h5_curr_batch_pointer = - self.batch_size
+        self.h5_curr_batch_pointer = 0
 
-    def load_dict_from_json(self):
+    def load_tag_dict_from_json(self):
         with open(self.json_path, 'r',encoding='utf8') as f:
             num2label = json.loads(f.readline().replace('\n',''))
             tag_dict = json.loads(f.readline().replace('\n',''))
             tag_dict = {key: int(tag_dict[key]) for key in tag_dict.keys()}
             # inv_tag_dict = {tag_dict[key]: key for key in tag_dict.keys()}
 
-        return tag_dict
+            inv_tag = [None] * len(tag_dict.keys())
+            for key in tag_dict.keys():
+                inv_tag[int(tag_dict[key])] = key
+
+        return tag_dict , inv_tag
 
     def h5_shuffle(self,h5_path):
 
@@ -65,9 +67,8 @@ class Runtime_data_handler(object):
 
         print("shuffling took [%0.2f SEC]" %(time.time() - t0))
 
-    def epoch_start(self,start_batch_id = 0,max_len=64,teacher_helping_mode='th_extended'):
-        self.output_max_len = max_len
-        self.teacher_helping_mode = teacher_helping_mode
+    def epoch_start(self,start_batch_id = 0,seq_len=64):
+        self.output_seq_len = seq_len
         self.h5_curr_batch_pointer = start_batch_id * self.batch_size
 
     def epoch_end(self):
@@ -78,69 +79,70 @@ class Runtime_data_handler(object):
 
     def get_batch(self,create_mask=False):
 
+        if self.h5_curr_batch_pointer+self.batch_size >= self.h5_num_rows:
+            print("data ended. shuffling...")
+            self.h5_shuffle(self.h5_path)
+
         with h5py.File(self.h5_path, 'r') as h5:
-            tags = np.array(h5['tags'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size])
+            tags = np.array(h5['tags'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size,:self.output_seq_len])
             labels = np.squeeze(h5['labels'][self.h5_curr_batch_pointer:self.h5_curr_batch_pointer+self.batch_size])
 
         # print("batch [%0d : %0d]"%(self.h5_curr_batch_pointer,self.h5_curr_batch_pointer+self.batch_size)) # for debug
 
-        # process
-        tags, mask = self.process_tags(tags,create_mask=create_mask)
+        # # process
+        # tags = self.process_tags(tags,create_mask=create_mask)
 
         # increment batch pointer
         self.h5_curr_batch_pointer += self.batch_size
 
-        if create_mask:
-            if self.use_labels:
-                return tags, labels, mask
-            else:
-                return tags, mask
-        else:
-            if self.use_labels:
-                return tags, labels
-            else:
-                return tags
 
-    def process_tags(self,tags,create_mask=False):
+        return tags, labels
 
-        feed_tags = self.tag_dict['END_TAG'] * np.ones(shape=[tags.shape[0],self.output_seq_len],dtype=np.uint8) #copy(tags)[:,:self.output_seq_len]
 
-        # cut sample in var lens
-        len_list = []
-        for sample_i in range(feed_tags.shape[0]):
-            if self.use_var_len == True:
-                len = random.randrange(1, self.output_max_len + 1)
-            else:
-                len = self.output_max_len
-            feed_tags[sample_i,:len] = tags[sample_i,:len]
-            len_list.append(len)
+    # def process_tags(self,tags,create_mask=False):
+    #
+    #     feed_tags = self.tag_dict['END_TAG'] * np.ones(shape=[tags.shape[0],self.output_seq_len],dtype=np.uint8) #copy(tags)[:,:self.output_seq_len]
+    #
+    #     # cut sample in var lens
+    #     len_list = []
+    #     for sample_i in range(feed_tags.shape[0]):
+    #         if self.use_var_len == True:
+    #             len = random.randrange(1, self.output_seq_len + 1)
+    #         else:
+    #             len = self.output_seq_len
+    #         feed_tags[sample_i,:len] = tags[sample_i,:len]
+    #         len_list.append(len)
+    #
+    #
+    #
+    #     return feed_tags
 
-        #create mask if needed
-        mask = np.zeros(shape=[tags.shape[0],self.output_seq_len],dtype=np.bool)
-        if create_mask:
-            for i, length in enumerate(len_list):
-                if self.teacher_helping_mode == 'th_legacy':
-                    window_size = 1
-                    window_offset = length - 1
-                elif self.teacher_helping_mode == 'th_extended':
-                    window_size = random.randrange(1, length + 1)
-                    window_offset = random.randrange(0, length - window_size + 1)
-                elif self.teacher_helping_mode == 'full':
-                    window_size = length
-                    window_offset = 0
-                else:
-                    raise TypeError('supported modes are {th_legacy,th_extended,full}')
-
-                mask[i,window_offset:window_offset + window_size] = 1
-
-        start_tags = self.tag_dict['START'] * np.ones([self.batch_size,1],dtype=np.uint8)
-        end_tags = self.tag_dict['END_TAG'] * np.ones([self.batch_size, 1], dtype=np.uint8)
-        feed_tags = np.concatenate((start_tags,feed_tags,end_tags),axis=1)
-
-        mask_zero_pad = np.zeros([self.batch_size,1],dtype=np.bool)
-        mask = np.concatenate((mask_zero_pad,mask,mask_zero_pad),axis=1)
-
-        return feed_tags, mask
+        # #create mask if needed
+        # mask = np.zeros(shape=[tags.shape[0],self.output_seq_len],dtype=np.bool)
+        # if create_mask:
+        #     for i, length in enumerate(len_list):
+        #         if self.teacher_helping_mode == 'th_legacy':
+        #             window_size = 1
+        #             window_offset = length - 1
+        #         elif self.teacher_helping_mode == 'th_extended':
+        #             window_size = random.randrange(1, length + 1)
+        #             window_offset = random.randrange(0, length - window_size + 1)
+        #         elif self.teacher_helping_mode == 'full':
+        #             window_size = length
+        #             window_offset = 0
+        #         else:
+        #             raise TypeError('supported modes are {th_legacy,th_extended,full}')
+        #
+        #         mask[i,window_offset:window_offset + window_size] = 1
+        #
+        # start_tags = self.tag_dict['START'] * np.ones([self.batch_size,1],dtype=np.uint8)
+        # end_tags = self.tag_dict['END_TAG'] * np.ones([self.batch_size, 1], dtype=np.uint8)
+        # feed_tags = np.concatenate((start_tags,feed_tags,end_tags),axis=1)
+        #
+        # mask_zero_pad = np.zeros([self.batch_size,1],dtype=np.bool)
+        # mask = np.concatenate((mask_zero_pad,mask,mask_zero_pad),axis=1)
+        #
+        # return feed_tags, mask
 
 
 

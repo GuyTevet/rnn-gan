@@ -5,9 +5,6 @@ import tensorflow as tf
 
 flags = tf.app.flags
 
-
-os.path.join('.','output','sample.txt')
-
 flags.DEFINE_string('LOGS_DIR', os.path.join('.','logs'), '')
 flags.DEFINE_string('DATA_DIR', os.path.join('.','data','1-billion-word-language-modeling-benchmark-r13output'), "")
 flags.DEFINE_string('CKPT_PATH', os.path.join('.','ckpt'), "")
@@ -15,6 +12,7 @@ flags.DEFINE_integer('BATCH_SIZE', 64, '')
 flags.DEFINE_integer('CRITIC_ITERS', 10, '')
 flags.DEFINE_integer('LAMBDA', 10, '')
 flags.DEFINE_integer('MAX_N_EXAMPLES', 10000000, '')
+flags.DEFINE_string('ARCH', 'default', '')
 flags.DEFINE_string('GENERATOR_MODEL', 'Generator_GRU_CL_VL_TH', '')
 flags.DEFINE_string('DISCRIMINATOR_MODEL', 'Discriminator_GRU', '')
 flags.DEFINE_string('PICKLE_PATH', os.path.join('.','pkl'), '')
@@ -23,6 +21,7 @@ flags.DEFINE_integer('ITERATIONS_PER_SEQ_LENGTH', 15000, '')
 flags.DEFINE_float('NOISE_STDEV', 10.0, '')
 flags.DEFINE_integer('DISC_STATE_SIZE', 512, '')
 flags.DEFINE_integer('GEN_STATE_SIZE', 512, '')
+flags.DEFINE_integer('GEN_CLASS_EMBED_SIZE', 32, '')
 flags.DEFINE_boolean('TRAIN_FROM_CKPT', False, '')
 flags.DEFINE_integer('GEN_GRU_LAYERS', 1, '')
 flags.DEFINE_integer('DISC_GRU_LAYERS', 1, '')
@@ -35,6 +34,8 @@ flags.DEFINE_boolean('SCHEDULE_ITERATIONS', False, '')
 flags.DEFINE_integer('SCHEDULE_MULT', 2000, '')
 flags.DEFINE_boolean('DYNAMIC_BATCH', False, '')
 flags.DEFINE_string('SCHEDULE_SPEC', 'all', '')
+flags.DEFINE_string('H5_PATH', os.path.join('.','h5', 'short_seq-64_char-based_classes-1.h5' ), '')
+flags.DEFINE_string('JSON_PATH', os.path.join('.','h5', 'short_seq-64_char-based_classes-1.json' ), '')
 
 # Only for inference mode
 

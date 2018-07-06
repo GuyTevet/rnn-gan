@@ -1,5 +1,6 @@
 import os
 import tensorflow as tf
+import numpy as np
 
 import model_and_data_serialization
 from config import LOGS_DIR
@@ -15,17 +16,29 @@ def define_summaries(disc_cost, gen_cost, seq_length):
     return merged, train_writer
 
 
-def log_samples(samples, scores, iteration, seq_length, prefix):
-    sample_scores = list(zip(samples, scores))
-    sample_scores = sorted(sample_scores, key=lambda sample: sample[1])
+def log_samples(samples, scores, iteration, seq_length, prefix, class_scores = None):
 
+    if class_scores is None:
+        class_scores = [None] * len(samples)
+    else:
+        # softmax
+        # fake_class_scores -= np.expand_dims(np.sum(fake_class_scores),axis=1) + 1
+        class_scores = np.exp(class_scores) / np.expand_dims(np.sum(np.exp(class_scores),axis=1),axis=1)
+
+    sample_scores = list(zip(samples, scores, class_scores))
+    sample_scores = sorted(sample_scores, key=lambda sample: sample[1])
 
     with open(model_and_data_serialization.get_internal_checkpoint_dir(seq_length) + '/{}_samples_{}.txt'.format(
             prefix, iteration),
               'a',encoding='utf8') as f:
-        for s, score in sample_scores:
+        for s, score, class_score in sample_scores:
             s = "".join(s)
-            f.write("%s||\t%f\n" % (s, score))
+            if class_scores[0] is None:
+                f.write("%s||\t\t%0.3f\n" % (s, score))
+            else:
+                class_score_for_print = ["%0.3f"%score for score in class_score]
+                f.write("%s||\t\t%0.3f ||\t%s\n" % (s, score,str(class_score_for_print).replace("'", "")))
+
     f.close()
 
 

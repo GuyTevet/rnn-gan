@@ -45,13 +45,18 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
         disc_cost, gen_cost, fake_inputs, disc_fake, disc_real, disc_on_inference, inference_op = define_objective(charmap,
                                                                                                                 real_inputs_discrete,
                                                                                                                 seq_length)
+        disc_fake_class = None
+        disc_real_class = None
+        disc_on_inference_class = None
+
         visualize_text = generate_argmax_samples_and_gt_samples
     elif FLAGS.ARCH == 'class_conditioned':
-        disc_cost, gen_cost, fake_inputs, disc_fake, disc_fake_class, disc_real, disc_real_class, disc_on_inference, inference_op = define_class_objective(charmap,
-                                                                                                                real_inputs_discrete,
-                                                                                                                real_classes_discrete,
-                                                                                                                seq_length,
-                                                                                                                num_classes=len(data_handler.class_dict))
+        disc_cost, gen_cost, fake_inputs, disc_fake, disc_fake_class, disc_real, disc_real_class,\
+        disc_on_inference, disc_on_inference_class, inference_op = define_class_objective(charmap,
+                                                                                            real_inputs_discrete,
+                                                                                            real_classes_discrete,
+                                                                                            seq_length,
+                                                                                            num_classes=len(data_handler.class_dict))
         visualize_text = generate_argmax_samples_and_gt_samples_class
 
     merged, train_writer = define_summaries(disc_cost, gen_cost, seq_length)
@@ -80,12 +85,17 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
 
             # Train critic
             for i in range(CRITIC_ITERS):
-                # _data = next(gen)
                 _data , _labels = data_handler.get_batch()
-                _disc_cost, _, real_scores = session.run(
-                    [disc_cost, disc_train_op, disc_real],
-                    feed_dict={real_inputs_discrete: _data, real_classes_discrete: _labels}
-                )
+                if FLAGS.ARCH == 'class_conditioned':
+                    _disc_cost, _, real_scores, real_class_scores = session.run(
+                        [disc_cost, disc_train_op, disc_real, disc_real_class],
+                        feed_dict={real_inputs_discrete: _data, real_classes_discrete: _labels})
+                else:
+                    _disc_cost, _, real_scores = session.run(
+                        [disc_cost, disc_train_op, disc_real],
+                        feed_dict={real_inputs_discrete: _data, real_classes_discrete: _labels})
+                    real_class_scores = None
+
 
             # Train G
             for i in range(GEN_ITERS):
@@ -97,9 +107,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
             print("disc cost %f"%_disc_cost)
 
             # Summaries
-            if iteration % 1000 == 999:
-            # if iteration % 5 == 4:
-                # _data = next(gen)
+            # if iteration % 1000 == 999:
+            if iteration % 2 == 0:
                 _data, _labels = data_handler.get_batch()
                 summary_str = session.run(
                     merged,
@@ -107,8 +116,7 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                 )
 
                 train_writer.add_summary(summary_str, global_step=iteration)
-
-                fake_samples, samples_real_probabilites, fake_scores = visualize_text(session, inv_charmap,
+                fake_samples, samples_real_probabilites, fake_scores, fake_class_scores = visualize_text(session, inv_charmap,
                                                                                       fake_inputs,
                                                                                       disc_fake,
                                                                                       data_handler,
@@ -116,12 +124,14 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                                                                                       real_classes_discrete,
                                                                                       feed_gt=True,
                                                                                       iteration=iteration,
-                                                                                      seq_length=seq_length)
+                                                                                      seq_length=seq_length,
+                                                                                      disc_class=disc_fake_class)
 
-                log_samples(fake_samples, fake_scores, iteration, seq_length, "train")
-                log_samples(decode_indices_to_string(_data, inv_charmap), real_scores, iteration, seq_length,
-                             "gt")
-                test_samples, _, fake_scores = visualize_text(session, inv_charmap,
+                log_samples(fake_samples, fake_scores, iteration, seq_length, "train", class_scores=fake_class_scores)
+                log_samples(decode_indices_to_string(_data, inv_charmap), real_scores, iteration, seq_length, "gt", class_scores=real_class_scores)
+
+                # inference
+                test_samples, _, fake_scores, fake_class_scores = visualize_text(session, inv_charmap,
                                                               inference_op,
                                                               disc_on_inference,
                                                               data_handler,
@@ -129,7 +139,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
                                                               real_classes_discrete,
                                                               feed_gt=False,
                                                               iteration=iteration,
-                                                              seq_length=seq_length)
+                                                              seq_length=seq_length,
+                                                              disc_class=disc_on_inference_class)
                 # disc_on_inference, inference_op
                 if not FLAGS.ARCH == 'class_conditioned':
                     log_samples(test_samples, fake_scores, iteration, seq_length, "test")

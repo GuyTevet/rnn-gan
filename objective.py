@@ -53,7 +53,8 @@ def define_class_objective(charmap, real_inputs_discrete, real_class_discrete, s
     real_inputs = tf.one_hot(real_inputs_discrete, len(charmap))
     Generator = get_generator(FLAGS.GENERATOR_MODEL)
     Discriminator = get_discriminator(FLAGS.DISCRIMINATOR_MODEL)
-    train_pred, inference_op = Generator(BATCH_SIZE, len(charmap), seq_len=seq_length, num_classes=num_classes, gt=real_inputs, gt_class=real_class_discrete)
+    train_pred, inference_op = Generator(BATCH_SIZE, len(charmap), seq_len=seq_length, num_classes=num_classes,
+                                         gt=real_inputs, gt_class=real_class_discrete)
 
     real_inputs_substrings = get_substrings_from_gt(real_inputs, seq_length, len(charmap))
 
@@ -64,7 +65,7 @@ def define_class_objective(charmap, real_inputs_discrete, real_class_discrete, s
     disc_cost, gen_cost = loss_d_g_class(disc_fake, disc_fake_class, disc_real, disc_real_class, real_class_discrete, num_classes)
 
     return disc_cost, gen_cost, train_pred, disc_fake, disc_fake_class, \
-           disc_real, disc_real_class, disc_on_inference, inference_op
+           disc_real, disc_real_class, disc_on_inference, disc_on_inference_class, inference_op
 
 def loss_d_g(disc_fake, disc_real, fake_inputs, real_inputs, charmap, seq_length, Discriminator):
     disc_cost = tf.reduce_mean(disc_fake) - tf.reduce_mean(disc_real)

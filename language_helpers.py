@@ -166,50 +166,59 @@ def load_dataset(max_length, max_n_examples, tokenize=False, max_vocab_size=2048
 
 
 def generate_argmax_samples_and_gt_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, real_classes_discrete,
-                                           feed_gt=True,iteration=None,seq_length=None):
+                                           feed_gt=True,iteration=None,seq_length=None,disc_class=None):
     scores = []
     samples = []
     samples_probabilites = []
     for i in range(10):
-        argmax_samples, real_samples, samples_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
+        argmax_samples, real_samples, samples_scores, _ = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
                                                                         gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt)
         samples.extend(argmax_samples)
         scores.extend(samples_scores)
         samples_probabilites.extend(real_samples)
-    return samples, samples_probabilites, scores
+
+    class_scores = None # empty placeholder
+
+    return samples, samples_probabilites, scores, class_scores
 
 def generate_argmax_samples_and_gt_samples_class(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, real_classes_discrete,
-                                                 feed_gt=True,iteration=None,seq_length=None):
+                                                 feed_gt=True,iteration=None,seq_length=None,disc_class=None):
     scores = []
     samples = []
     samples_probabilites = []
+    samples_class_scores = []
     if feed_gt: #train
         for i in range(10):
-            argmax_samples, real_samples, samples_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
-                                                                            gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt)
+            argmax_samples, real_samples, samples_scores, class_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
+                                                                            gen, real_inputs_discrete,real_classes_discrete, 
+                                                                            feed_gt=feed_gt,disc_class=disc_class)
             samples.extend(argmax_samples)
             scores.extend(samples_scores)
             samples_probabilites.extend(real_samples)
+            samples_class_scores.extend(class_scores)
     else: #infrance per label
         for _label in gen.class_dict.keys():
             for i in range(10):
-                argmax_samples, real_samples, samples_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
-                                                                                gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt, single_label=_label)
+                argmax_samples, real_samples, samples_scores, class_scores = generate_samples(session, inv_charmap, fake_inputs, disc_fake,
+                                                                                gen, real_inputs_discrete,real_classes_discrete, feed_gt=feed_gt, 
+                                                                                single_label=_label,disc_class=disc_class)
                 samples.extend(argmax_samples)
                 scores.extend(samples_scores)
                 samples_probabilites.extend(real_samples)
+                samples_class_scores.extend(class_scores)
 
             #write label visualization
-            log_samples(samples, scores, iteration, seq_length, "test_" + gen.class_dict[_label])
+            log_samples(samples, scores, iteration, seq_length, "test_" + gen.class_dict[_label], class_scores=samples_class_scores)
             scores = []
             samples = []
             samples_probabilites = []
+            samples_class_scores = []
 
-    return samples, samples_probabilites, scores
+    return samples, samples_probabilites, scores, class_scores
 
 
 def generate_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inputs_discrete, real_classes_discrete,
-                     feed_gt=True, single_label=None):
+                     feed_gt=True, single_label=None, disc_class=None):
     # sampled data here is only to calculate loss
     if feed_gt:
         _data, _labels = gen.get_batch()
@@ -218,14 +227,20 @@ def generate_samples(session, inv_charmap, fake_inputs, disc_fake, gen, real_inp
         if single_label is None:
             f_dict = {}
         else:
-            f_dict = {real_classes_discrete: single_label * np.ones([BATCH_SIZE],dtype=np.int32)} #inference for ingle label
+            f_dict = {real_classes_discrete: single_label * np.ones([BATCH_SIZE],dtype=np.int32)} #inference for ingle label # FIXME - BUG
 
-    fake_samples, fake_scores = session.run([fake_inputs, disc_fake], feed_dict=f_dict)
+    if disc_class is None:
+        fake_samples, fake_scores = session.run([fake_inputs, disc_fake], feed_dict=f_dict)
+        fake_class_scores = [None] * BATCH_SIZE
+    else:
+        fake_samples, fake_scores, fake_class_scores = session.run([fake_inputs, disc_fake, disc_class], feed_dict=f_dict)
+        fake_class_scores = np.squeeze(fake_class_scores)
+
     fake_scores = np.squeeze(fake_scores)
 
     decoded_samples = decode_indices_to_string(np.argmax(fake_samples, axis=2), inv_charmap)
 
-    return decoded_samples, fake_samples, fake_scores
+    return decoded_samples, fake_samples, fake_scores, fake_class_scores
 
 def decode_indices_to_string(samples, inv_charmap):
     decoded_samples = []
@@ -245,3 +260,4 @@ def inf_train_gen(lines, charmap):
                 [[charmap[c] for c in l] for l in lines[i:i + BATCH_SIZE]],
                 dtype='int32'
             )
+

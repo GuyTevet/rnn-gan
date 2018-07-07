@@ -16,21 +16,24 @@ def get_optimization_ops(disc_cost, gen_cost, global_step):
     return disc_train_op, gen_train_op
 
 
-def get_substrings_from_gt(real_inputs, seq_length, charmap_len):
+def get_substrings_from_gt(real_inputs, real_input_class, seq_length, charmap_len):
     train_pred = []
+
     for i in range(seq_length):
         train_pred.append(
             tf.concat([tf.zeros([BATCH_SIZE, seq_length - i - 1, charmap_len]), real_inputs[:, :i + 1]],
                       axis=1))
 
     all_sub_strings = tf.reshape(train_pred, [BATCH_SIZE * seq_length, seq_length, charmap_len])
+    all_sub_strings_classes = tf.tile(real_input_class,[seq_length])
 
     if FLAGS.LIMIT_BATCH:
         indices = tf.random_uniform([BATCH_SIZE], 1, all_sub_strings.get_shape()[0], dtype=tf.int32)
         all_sub_strings = tf.gather(all_sub_strings, indices)
-        return all_sub_strings[:BATCH_SIZE]
+        all_sub_strings_classes = tf.gather(all_sub_strings_classes, indices)
+        return all_sub_strings[:BATCH_SIZE] , all_sub_strings_classes[:BATCH_SIZE]
     else:
-        return all_sub_strings
+        return all_sub_strings, all_sub_strings_classes
 
 
 def define_objective(charmap, real_inputs_discrete, seq_length):
@@ -53,16 +56,22 @@ def define_class_objective(charmap, real_inputs_discrete, real_class_discrete, s
     real_inputs = tf.one_hot(real_inputs_discrete, len(charmap))
     Generator = get_generator(FLAGS.GENERATOR_MODEL)
     Discriminator = get_discriminator(FLAGS.DISCRIMINATOR_MODEL)
-    train_pred, inference_op = Generator(BATCH_SIZE, len(charmap), seq_len=seq_length, num_classes=num_classes,
+    train_pred, train_pred_class, inference_op = Generator(BATCH_SIZE, len(charmap), seq_len=seq_length, num_classes=num_classes,
                                          gt=real_inputs, gt_class=real_class_discrete)
 
-    real_inputs_substrings = get_substrings_from_gt(real_inputs, seq_length, len(charmap))
+    real_inputs_substrings, real_inputs_class = get_substrings_from_gt(real_inputs, real_class_discrete, seq_length, len(charmap))
 
     disc_real, disc_real_class = Discriminator(real_inputs_substrings, len(charmap), seq_length, num_classes, reuse=False)
     disc_fake, disc_fake_class = Discriminator(train_pred, len(charmap), seq_length, num_classes, reuse=True)
     disc_on_inference, disc_on_inference_class = Discriminator(inference_op, len(charmap), seq_length, num_classes, reuse=True)
 
-    disc_cost, gen_cost = loss_d_g_class(disc_fake, disc_fake_class, disc_real, disc_real_class, real_class_discrete, num_classes)
+    disc_cost, gen_cost = loss_d_g_class(disc_fake=disc_fake,
+                                         disc_fake_class=disc_fake_class,
+                                         disc_real=disc_real,
+                                         disc_real_class=disc_real_class,
+                                         gt_fake_class=train_pred_class,
+                                         gt_real_class=real_inputs_class,
+                                         num_classes=num_classes)
 
     return disc_cost, gen_cost, train_pred, disc_fake, disc_fake_class, \
            disc_real, disc_real_class, disc_on_inference, disc_on_inference_class, inference_op
@@ -86,7 +95,7 @@ def loss_d_g(disc_fake, disc_real, fake_inputs, real_inputs, charmap, seq_length
 
     return disc_cost, gen_cost
 
-def loss_d_g_class(disc_fake, disc_fake_class, disc_real, disc_real_class, gt_class, num_classes):
+def loss_d_g_class(disc_fake, disc_fake_class, disc_real, disc_real_class, gt_fake_class, gt_real_class, num_classes):
 
     # get loss for discriminator
     disc_cost_real = tf.reduce_mean(
@@ -100,10 +109,11 @@ def loss_d_g_class(disc_fake, disc_fake_class, disc_real, disc_real_class, gt_cl
         tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_fake, labels=tf.ones_like(disc_fake)))
 
     # Calculate classifier cost
-    gt_class_one_hot = tf.one_hot(gt_class, num_classes)
+    gt_real_class_one_hot = tf.one_hot(gt_real_class, num_classes)
+    gt_fake_class_one_hot = tf.one_hot(gt_fake_class, num_classes)
 
-    classifier_real_cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=disc_real_class, labels=gt_class_one_hot))
-    classifier_fake_cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=disc_fake_class, labels=gt_class_one_hot))
+    classifier_real_cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=disc_real_class, labels=gt_real_class_one_hot))
+    classifier_fake_cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=disc_fake_class, labels=gt_fake_class_one_hot))
     classifier_cost = classifier_fake_cost + classifier_real_cost
 
     disc_cost += classifier_cost

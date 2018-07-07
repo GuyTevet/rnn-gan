@@ -107,8 +107,8 @@ def run(iterations, seq_length, is_first, charmap, inv_charmap, prev_seq_length)
             print("disc cost %f"%_disc_cost)
 
             # Summaries
-            # if iteration % 1000 == 999:
-            if iteration % 2 == 0:
+            if iteration % 1000 == 999:
+            # if iteration % 100 == 99:
                 _data, _labels = data_handler.get_batch()
                 summary_str = session.run(
                     merged,

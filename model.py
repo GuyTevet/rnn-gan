@@ -152,7 +152,7 @@ def Generator_GRU_class_conditioned(n_samples, charmap_len, num_classes, seq_len
             seq_len = tf.placeholder(tf.int32, None, name="ground_truth_sequence_length")
 
         if gt is not None: #if no GT, we are training
-            train_pred = get_class_train_op(cells, char_input, charmap_len, char_embedding,class_embedding, gt,gt_class, n_samples, num_neurons, num_char_embed,
+            train_pred, train_pred_class = get_class_train_op(cells, char_input, charmap_len, char_embedding,class_embedding, gt,gt_class, n_samples, num_neurons, num_char_embed,
                                             seq_len, sm_bias, sm_weight, train_initial_states)
             inference_op = get_class_inference_op(cells, char_input, char_embedding, class_embedding, gt_class, seq_len, sm_bias, sm_weight, inference_initial_states,
                                             num_neurons,
@@ -163,7 +163,7 @@ def Generator_GRU_class_conditioned(n_samples, charmap_len, num_classes, seq_len
                                             charmap_len, reuse=False)
             train_pred = None
 
-        return train_pred , inference_op
+        return train_pred, train_pred_class, inference_op
 
 
 def create_initial_states(noise):
@@ -215,6 +215,7 @@ def get_class_train_op(cells, char_input, charmap_len, char_embedding, class_emb
     GRU_output, _ = rnn_step_prediction(cells, charmap_len, gt_sentence_input, num_neurons, seq_len, sm_bias,
                                          sm_weight,
                                          states)
+
     train_pred = []
     # TODO: optimize loop
     for i in range(seq_len):
@@ -222,13 +223,16 @@ def get_class_train_op(cells, char_input, charmap_len, char_embedding, class_emb
             tf.concat([tf.zeros([BATCH_SIZE, seq_len - i - 1, charmap_len]), gt[:, :i], GRU_output[:, i:i + 1, :]],
                       axis=1))
 
+    train_pred_class = tf.tile(gt_class,[seq_len])
+
     train_pred = tf.reshape(train_pred, [BATCH_SIZE*seq_len, seq_len, charmap_len])
 
     if FLAGS.LIMIT_BATCH:
         indices = tf.random_uniform([BATCH_SIZE], 0, BATCH_SIZE*seq_len, dtype=tf.int32)
         train_pred = tf.gather(train_pred, indices)
+        train_pred_class = tf.gather(train_pred_class,indices)
 
-    return train_pred
+    return train_pred, train_pred_class
 
 def rnn_step_prediction(cells, charmap_len, gt_sentence_input, num_neurons, seq_len, sm_bias, sm_weight, states,
                         reuse=False):
